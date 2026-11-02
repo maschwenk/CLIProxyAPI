@@ -88,12 +88,8 @@ func (s *ResetAwareSelector) Pick(ctx context.Context, provider, model string, o
 	ctx = context.WithValue(ctx, prevalidatedAuthCandidatesKey{}, true)
 	selected, errPick := fallback.Pick(ctx, provider, model, opts, preferred)
 	if errPick == nil {
-		selectorLogEntry(ctx).
-			WithField("weekly_reset", best.weekly).
-			WithField("session_reset", best.session).
-			WithField("known_accounts", known).
-			WithField("eligible_accounts", len(available)).
-			Info("reset-aware: selected using observed quota deadlines")
+		selectorLogEntry(ctx).Infof("reset-aware: selected using observed quota deadlines | weekly_reset=%s session_reset=%s known_accounts=%d eligible_accounts=%d",
+			best.weekly.UTC().Format(time.RFC3339), best.session.UTC().Format(time.RFC3339), known, len(available))
 	}
 	return selected, errPick
 }
