@@ -118,6 +118,13 @@ func TestResetAwareSelectionRetainsConfiguredFallbackAndOtherProviders(t *testin
 	if errPick != nil || got == nil || got.ID != "b" {
 		t.Fatalf("zero-weight credential was not excluded: %v, %v", got, errPick)
 	}
+	a := &Auth{ID: "a", Provider: "codex", Status: StatusActive}
+	b := resetTestAuth("b", now, time.Hour, 0)
+	selector = &ResetAwareSelector{Fallback: &FillFirstSelector{}, now: func() time.Time { return now }}
+	got, errPick = selector.Pick(context.Background(), "mixed", "model", cliproxyexecutor.Options{}, []*Auth{a, b})
+	if errPick != nil || got == nil || got.ID != "a" {
+		t.Fatalf("mixed-provider routing changed: %v, %v", got, errPick)
+	}
 }
 
 func TestResetAwareManagerKeepsSessionsPinnedAndFailsOverOnQuota(t *testing.T) {
@@ -148,7 +155,7 @@ func TestResetAwareManagerKeepsSessionsPinnedAndFailsOverOnQuota(t *testing.T) {
 	}
 	pick := func(opts cliproxyexecutor.Options, want string) {
 		t.Helper()
-		got, _, errPick := manager.pickNext(ctx, "claude", model, opts, nil)
+		got, _, _, errPick := manager.pickNextMixed(ctx, []string{"claude"}, model, opts, nil)
 		if errPick != nil || got == nil || got.ID != want {
 			t.Fatalf("selected %v, err %v; want %s", got, errPick, want)
 		}

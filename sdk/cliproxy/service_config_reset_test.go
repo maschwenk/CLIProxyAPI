@@ -47,7 +47,7 @@ func TestResetAwareConfigReachesSelectorAndKeepsAffinityOutsidePreference(t *tes
 			}
 			opts := cliproxyexecutor.Options{Headers: http.Header{"X-Claude-Code-Session-Id": {"config-reset-session"}}}
 			for i := range 2 {
-				got, errPick := selector.Pick(context.Background(), "claude", "claude-opus-5-5", opts, auths)
+				got, errPick := selector.Pick(context.Background(), "mixed", "claude-opus-5-5", opts, auths)
 				if errPick != nil || got == nil || got.ID != want {
 					t.Fatalf("pick %d = %v, err %v; want sticky account %s", i, got, errPick, want)
 				}

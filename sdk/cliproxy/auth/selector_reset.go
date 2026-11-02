@@ -37,7 +37,16 @@ func (s *ResetAwareSelector) Pick(ctx context.Context, provider, model string, o
 	if fallback == nil {
 		fallback = &FillFirstSelector{}
 	}
-	if !strings.EqualFold(strings.TrimSpace(provider), "claude") {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "claude":
+	case "mixed":
+		// HTTP requests use mixed scheduling even for a Claude-only pool.
+		for _, candidate := range auths {
+			if candidate != nil && !strings.EqualFold(strings.TrimSpace(candidate.Provider), "claude") {
+				return fallback.Pick(ctx, provider, model, opts, auths)
+			}
+		}
+	default:
 		return fallback.Pick(ctx, provider, model, opts, auths)
 	}
 	now := time.Now()

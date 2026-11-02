@@ -17,7 +17,9 @@ The preference runs inside session affinity: existing healthy bindings keep thei
 account even when another account's reset moves ahead. Model availability,
 credential priority, disabled accounts, retry exclusions, and quota cooldowns
 remain authoritative. The configured strategy resolves ties and supplies the
-fallback. Other providers and mixed-provider routes retain their existing policy.
+fallback. This includes the HTTP handler's mixed scheduling path when all
+candidates are Claude accounts. Other providers and routes containing multiple
+providers retain their existing policy.
 
 Reset information comes from normal upstream response headers. There is no
 additional network request on the selection path. Observations are in memory, so
