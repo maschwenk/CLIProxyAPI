@@ -197,6 +197,9 @@ func BuildConfigChangeDetails(oldCfg, newCfg *config.Config) []string {
 	if oldCfg.Routing.Strategy != newCfg.Routing.Strategy {
 		changes = append(changes, fmt.Sprintf("routing.strategy: %s -> %s", oldCfg.Routing.Strategy, newCfg.Routing.Strategy))
 	}
+	if oldCfg.Routing.PreferSoonestReset != newCfg.Routing.PreferSoonestReset {
+		changes = append(changes, fmt.Sprintf("routing.prefer-soonest-reset: %t -> %t", oldCfg.Routing.PreferSoonestReset, newCfg.Routing.PreferSoonestReset))
+	}
 	if !reflect.DeepEqual(oldCfg.Payload, newCfg.Payload) {
 		changes = appendPayloadConfigChanges(changes, oldCfg.Payload, newCfg.Payload)
 	}

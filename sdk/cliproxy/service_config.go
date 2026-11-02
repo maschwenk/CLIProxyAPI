@@ -56,6 +56,7 @@ type configCommit struct {
 
 type routingRuntimeState struct {
 	strategy                 string
+	preferSoonestReset       bool
 	sessionAffinity          bool
 	sessionAffinityTTL       time.Duration
 	sessionAffinitySubagents bool
@@ -79,6 +80,7 @@ func normalizedRoutingRuntimeState(cfg *config.Config) routingRuntimeState {
 	case "fill-first", "fillfirst", "ff":
 		state.strategy = "fill-first"
 	}
+	state.preferSoonestReset = cfg.Routing.PreferSoonestReset
 	state.sessionAffinity = cfg.Routing.SessionAffinity
 	if ttl := strings.TrimSpace(cfg.Routing.SessionAffinityTTL); ttl != "" {
 		if parsed, errParse := time.ParseDuration(ttl); errParse == nil && parsed > 0 {
@@ -106,6 +108,9 @@ func newRoutingSelector(state routingRuntimeState) coreauth.Selector {
 		selector = &coreauth.FillFirstSelector{}
 	default:
 		selector = &coreauth.RoundRobinSelector{}
+	}
+	if state.preferSoonestReset {
+		selector = &coreauth.ResetAwareSelector{Fallback: selector}
 	}
 	if state.sessionAffinity {
 		subagents := state.sessionAffinitySubagents

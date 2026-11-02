@@ -419,6 +419,11 @@ type RoutingConfig struct {
 	// Supported values: "round-robin" (default), "weighted-round-robin", "fill-first".
 	Strategy string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
 
+	// PreferSoonestReset prioritizes observed Claude weekly quota deadlines before
+	// the configured strategy. Five-hour deadlines break ties. Session affinity,
+	// credential priority, and availability checks still take precedence.
+	PreferSoonestReset bool `yaml:"prefer-soonest-reset,omitempty" json:"prefer-soonest-reset,omitempty"`
+
 	// SessionAffinity enables universal session-sticky routing for all clients.
 	// Explicit Claude Code, Codex, OpenCode, and pi session headers are preferred,
 	// followed by prompt_cache_key, Responses conversation IDs, legacy body IDs,
