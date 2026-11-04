@@ -174,3 +174,47 @@ func TestResetAwareManagerKeepsSessionsPinnedAndFailsOverOnQuota(t *testing.T) {
 	pick(fresh, "reset-test-b")
 	pick(original, "reset-test-b")
 }
+
+func TestResetAwareSelectionUsesPolledUsageForAccountsWithoutTraffic(t *testing.T) {
+	now := time.Now().Truncate(time.Second)
+	const model = "claude-opus-5-5"
+	usageBody := func(used int, reset time.Time) []byte {
+		// Shape of a live /api/oauth/usage response: fractional resets, no five-hour window.
+		return []byte(`{"five_hour":null,"seven_day":{"utilization":` + strconv.Itoa(used) + `,"resets_at":"` +
+			reset.Add(-7*time.Millisecond).UTC().Format(time.RFC3339Nano) + `"},"limits":[]}`)
+	}
+	for _, tc := range []struct {
+		name   string
+		change func(idle *Auth)
+		want   string
+	}{
+		{name: "idle account resetting sooner wins over a busy account resetting later", want: "idle"},
+		{name: "newer rejection from a real response outranks the older poll", change: func(idle *Auth) {
+			idle.Quota.ObserveResponseHeadersForProvider("claude", http.Header{
+				"Anthropic-Ratelimit-Unified-7d-Reset":       {strconv.FormatInt(now.Add(12*time.Hour).Unix(), 10)},
+				"Anthropic-Ratelimit-Unified-7d-Status":      {"rejected"},
+				"Anthropic-Ratelimit-Unified-7d-Utilization": {"1.0"},
+			}, now)
+		}, want: "busy"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			busy := resetTestAuth("busy", now, 3*24*time.Hour, 0)
+			idle := &Auth{ID: "idle-" + strconv.FormatInt(now.UnixNano(), 10) + tc.name, Provider: "claude", Status: StatusActive}
+			t.Cleanup(func() { RetainClaudeUsage(map[string]struct{}{}) })
+			if _, errRecord := RecordClaudeUsage(idle.ID, usageBody(54, now.Add(12*time.Hour)), now.Add(-time.Minute)); errRecord != nil {
+				t.Fatal(errRecord)
+			}
+			if tc.change != nil {
+				tc.change(idle)
+			}
+			selector := &ResetAwareSelector{Fallback: &FillFirstSelector{}, now: func() time.Time { return now }}
+			got, errPick := selector.Pick(context.Background(), "claude", model, cliproxyexecutor.Options{}, []*Auth{busy, idle})
+			if errPick != nil || got == nil {
+				t.Fatalf("selected %v, err %v", got, errPick)
+			}
+			if (tc.want == "idle") != (got.ID == idle.ID) {
+				t.Fatalf("selected %s; want the %s account", got.ID, tc.want)
+			}
+		})
+	}
+}
