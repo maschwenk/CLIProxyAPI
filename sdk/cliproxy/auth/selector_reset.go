@@ -95,19 +95,16 @@ func (s *ResetAwareSelector) Pick(ctx context.Context, provider, model string, o
 }
 
 func claudeQuotaResetRank(auth *Auth, model string, now time.Time) quotaResetRank {
+	sources := []QuotaState{auth.Quota, polledClaudeQuota(auth.ID)}
 	rank := quotaResetRank{
-		weekly:  claudeWindowReset(auth.Quota, "7d", now, 7*24*time.Hour),
-		session: claudeWindowReset(auth.Quota, "5h", now, 5*time.Hour),
+		weekly:  claudeWindowReset(newestWindowQuota("7d", sources...), "7d", now, 7*24*time.Hour),
+		session: claudeWindowReset(newestWindowQuota("5h", sources...), "5h", now, 5*time.Hour),
 	}
 	if strings.HasPrefix(strings.ToLower(canonicalModelKey(model)), "claude-fable-") {
-		quota := auth.Quota
 		if state := auth.ModelStates[canonicalModelKey(model)]; state != nil {
-			key := http.CanonicalHeaderKey("Anthropic-Ratelimit-Unified-7d_oi-Reset")
-			if quota.Signals[key] == "" || state.Quota.ObservedAt.After(quota.ObservedAt) {
-				quota = state.Quota
-			}
+			sources = append(sources, state.Quota)
 		}
-		if reset := claudeWindowReset(quota, "7d_oi", now, 7*24*time.Hour); !reset.IsZero() && (rank.weekly.IsZero() || reset.Before(rank.weekly)) {
+		if reset := claudeWindowReset(newestWindowQuota("7d_oi", sources...), "7d_oi", now, 7*24*time.Hour); !reset.IsZero() && (rank.weekly.IsZero() || reset.Before(rank.weekly)) {
 			rank.weekly = reset
 		}
 	}

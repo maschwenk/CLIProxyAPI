@@ -21,17 +21,22 @@ fallback. This includes the HTTP handler's mixed scheduling path when all
 candidates are Claude accounts. Other providers and routes containing multiple
 providers retain their existing policy.
 
-Reset information comes from normal upstream response headers. There is no
-additional network request on the selection path. Observations are in memory, so
-after a restart an account's deadlines are unknown until it serves a request.
+Reset information comes from two places: normal upstream response headers, and
+Anthropic's OAuth usage endpoint (`/api/oauth/usage`), which the proxy reads for
+every Claude OAuth account every five minutes while this setting is on. Polling
+covers accounts that have not served a request through this proxy since it
+started, and accounts used directly by Claude Code elsewhere. For each window the
+newer of the two observations wins, so a fresh rejection from a real response
+outranks an older poll. Nothing extra happens on the selection path.
+
 Known future deadlines are preferred over unknown ones; if no eligible account
 has usable reset data, selection falls back to the configured strategy. Expired,
 malformed, exhausted, and implausibly distant windows do not receive preference.
-This cannot compare an unused account's unobserved deadline, and does not poll
-accounts that are idle or used outside this proxy.
+A failed poll is logged and leaves the previous observation in place.
 
 Logs report how many eligible accounts had usable observations and the preferred
-deadlines. These observations only rank accounts; they never clear or shorten a
+deadlines, plus one `polled claude usage` line per poll with each account's weekly
+usage and reset. These observations only rank accounts; they never clear or shorten a
 cooldown. Changing routing settings or restarting the process clears in-memory
 session bindings, so activate changes between active requests.
 

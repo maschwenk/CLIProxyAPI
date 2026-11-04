@@ -419,7 +419,8 @@ type RoutingConfig struct {
 	// Supported values: "round-robin" (default), "weighted-round-robin", "fill-first".
 	Strategy string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
 
-	// PreferSoonestReset prioritizes observed Claude weekly quota deadlines before
+	// PreferSoonestReset prioritizes Claude weekly quota deadlines (from response
+	// headers and a five-minute poll of the OAuth usage endpoint) before
 	// the configured strategy. Five-hour deadlines break ties. Session affinity,
 	// credential priority, and availability checks still take precedence.
 	PreferSoonestReset bool `yaml:"prefer-soonest-reset,omitempty" json:"prefer-soonest-reset,omitempty"`
